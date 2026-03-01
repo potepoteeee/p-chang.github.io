@@ -3,51 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>生き延びろ汚物ラビットrun！</title>
+    <title>爆速！完全自律サウンドラビット</title>
     <style>
         * { box-sizing: border-box; touch-action: none; margin: 0; padding: 0; overflow: hidden; }
         body { width: 100vw; height: 100vh; background-color: #111; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
-        canvas { background-color: #87CEEB; display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 20px; left: 0; width: 100%; pointer-events: none; z-index: 10; display: flex; justify-content: center; align-items: center; }
-        .score-container { display: flex; align-items: center; margin-left: 20px; }
-        .score-num { font-size: 60px; color: #ffeb3b; font-weight: bold; text-shadow: 4px 4px 0 #000; }
-        #doubleIndicator { font-size: 40px; color: #000; font-weight: bold; margin-left: 10px; display: none; animation: flash 0.5s infinite; }
+        canvas { background-color: #87CEEB; display: block; width: 100%; height: 100%; object-fit: contain; }
+        
+        /* UI位置の調整（端っこすぎないように） */
+        #ui { position: absolute; top: 40px; left: 0; width: 100%; pointer-events: none; z-index: 10; display: flex; justify-content: center; align-items: center; padding: 0 20px; }
+        .score-container { display: flex; align-items: center; margin-left: 15px; }
+        .score-num { font-size: 50px; color: #ffeb3b; font-weight: bold; text-shadow: 3px 3px 0 #000; }
+        #doubleIndicator { font-size: 30px; color: #000; font-weight: bold; margin-left: 10px; display: none; animation: flash 0.5s infinite; }
+        
         #barrierIcon {
-            width: 75px; height: 75px; background: rgba(0, 150, 255, 0.4); border: 5px solid #00d2ff;
+            width: 70px; height: 70px; background: rgba(0, 150, 255, 0.4); border: 4px solid #00d2ff;
             border-radius: 50%; display: none; justify-content: center; align-items: center;
             pointer-events: auto; position: relative;
         }
         #barrierIcon.active { display: flex; cursor: pointer; animation: pulse 0.8s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* リトライ画面をコンパクトに修正 */
         #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 20; color: white; text-align: center;
-            cursor: pointer; padding: 20px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 85%; max-width: 400px; height: auto; padding: 30px;
+            background: rgba(0,0,0,0.9); border: 2px solid #555; border-radius: 20px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 20; color: white; text-align: center; cursor: pointer;
         }
-        .msg { font-size: 24px; font-weight: bold; margin-bottom: 15px; color: #fff; text-shadow: 2px 2px 0 #000; }
-        .death-msg { font-size: 32px; color: #ff4444; margin-bottom: 20px; display: none; }
-        .rule-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; border: 1px solid #555; margin-bottom: 20px; }
-        .rule { font-size: 15px; color: #00d2ff; margin-bottom: 8px; line-height: 1.4; text-align: left; }
-        .start-btn { font-size: 26px; color: #ffeb3b; margin-top: 10px; animation: flash 1.5s infinite; font-weight: bold; }
+        .msg { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .death-msg { font-size: 26px; color: #ff4444; margin-bottom: 15px; font-weight: bold; }
+        .rule-box { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; margin-bottom: 15px; width: 100%; }
+        .rule { font-size: 13px; color: #00d2ff; margin-bottom: 5px; text-align: left; }
+        .start-btn { font-size: 22px; color: #ffeb3b; margin-top: 5px; animation: flash 1.5s infinite; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="overlay" onclick="startGame()">
-        <div id="statusMsg" class="msg">🐰 うさぎさんを汚物から逃がそう！</div>
+        <div id="statusMsg" class="msg">🐰 ウサギを汚物から逃がそう！</div>
         <div id="deathText" class="death-msg">死んじゃった( ﾉД`)ｼｸｼｸ…</div>
         <div class="rule-box">
-            <div class="rule">・【ジャンプ】タップまたはクリック！</div>
-            <div class="rule">・【バリア】アイコンタップ（PCはFキー）</div>
+            <div class="rule">・【ジャンプ】タップ！</div>
+            <div class="rule">・【バリア】アイコンタップ</div>
             <div class="rule">・【×2】3秒間スコア2倍！</div>
         </div>
         <div class="start-btn">タップでスタート！</div>
     </div>
     <div id="ui">
         <div id="barrierIcon" onclick="activateBarrier(event)">
-            <span style="font-size:35px">🛡️</span>
-            <div id="barrierTimer" style="position:absolute;bottom:-28px;color:#00d2ff;font-weight:bold;font-size:20px;text-shadow:2px 2px 0 #000;"></div>
+            <span style="font-size:32px">🛡️</span>
+            <div id="barrierTimer" style="position:absolute;bottom:-25px;color:#00d2ff;font-weight:bold;font-size:18px;text-shadow:1px 1px 0 #000;"></div>
         </div>
         <div class="score-container">
             <div class="score-num" id="scoreBoard">0</div>
@@ -68,20 +75,12 @@
     const deathText = document.getElementById("deathText");
 
     let audioCtx;
-    function initAudio() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
     function playSynth(freq, type, duration, vol=0.1, slide=0) {
-        initAudio();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        if (slide !== 0) {
-            osc.frequency.exponentialRampToValueAtTime(freq + slide, audioCtx.currentTime + duration);
-        }
+        initAudio(); if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        if (slide !== 0) osc.frequency.exponentialRampToValueAtTime(freq + slide, audioCtx.currentTime + duration);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
         osc.connect(gain); gain.connect(audioCtx.destination);
@@ -100,17 +99,20 @@
         crash: () => playSynth(100, 'sawtooth', 0.6, 0.2, -50)
     };
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    const V_WIDTH = 1000; 
+    const V_HEIGHT = 1600; 
+    function resize() { canvas.width = V_WIDTH; canvas.height = V_HEIGHT; }
     window.addEventListener('resize', resize); resize();
 
     let score = 0, gameActive = false, lastTime = performance.now();
     let spawnTimer = 0, barrierSpawnTimer = 0, doubleSpawnTimer = 0, nextSpawnTime = 500;
-    const groundY = canvas.height * 0.85;
+    const groundY = V_HEIGHT * 0.88;
 
     let hasBarrier = false, barrierActive = false, barrierTimeLeft = 0;
     let doubleActive = false, doubleTimeLeft = 0;
 
-    const rabbit = { x: canvas.width * 0.25, y: groundY - 100, r: 55, dy: 0, jump: -2400, grav: 9500, grounded: false };
+    // ★ジャンプ力を抑え、重力を強めて「飛びすぎ」を防止
+    const rabbit = { x: V_WIDTH * 0.25, y: groundY - 100, dy: 0, jump: -2450, grav: 11000, grounded: false };
     const obstacles = [], items = [];
 
     function startGame() {
@@ -127,7 +129,8 @@
         score = 0; scoreEl.innerText = 0; obstacles.length = 0; items.length = 0;
         hasBarrier = false; barrierActive = false; doubleActive = false;
         doubleInd.style.display = "none"; barrierIcon.style.display="none";
-        rabbit.dy = 0; rabbit.y = groundY - 65; spawnTimer = 0; barrierSpawnTimer = 0; doubleSpawnTimer = 0;
+        rabbit.dy = 0; rabbit.y = groundY - 65; spawnTimer = 0; 
+        barrierSpawnTimer = 0; doubleSpawnTimer = 0;
         lastTime = performance.now();
     }
 
@@ -140,12 +143,8 @@
     }
 
     const doJump = () => { if (gameActive && rabbit.grounded) { rabbit.dy = rabbit.jump; rabbit.grounded = false; se.jump(); } };
-    window.addEventListener("touchstart", (e) => { if (e.target.closest("#barrierIcon")) return; doJump(); }, { passive: false });
+    window.addEventListener("touchstart", (e) => { if (e.target.closest("#barrierIcon")) return; doJump(); e.preventDefault(); }, { passive: false });
     window.addEventListener("mousedown", (e) => { if (e.target.closest("#barrierIcon")) return; doJump(); });
-    window.addEventListener("keydown", (e) => {
-        if (e.key === "f" || e.key === "F") activateBarrier();
-        if (e.code === "Space") doJump();
-    });
 
     function update(dt) {
         if (!gameActive) return;
@@ -167,18 +166,19 @@
 
         spawnTimer += dt * 1000;
         if (spawnTimer > nextSpawnTime) {
-            obstacles.push({ x: canvas.width + 200, y: groundY, size: Math.random()*20+50 });
+            obstacles.push({ x: V_WIDTH + 200, y: groundY, size: Math.random()*20+60 });
             spawnTimer = 0; nextSpawnTime = Math.random()*500+450;
         }
         barrierSpawnTimer += dt * 1000;
-        if (barrierSpawnTimer > 7000) { items.push({ type: 'barrier', x: canvas.width + 200, y: groundY - 250 - Math.random()*150 }); barrierSpawnTimer = 0; }
+        if (barrierSpawnTimer > 7000) { items.push({ type: 'barrier', x: V_WIDTH + 200, y: groundY - 250 - Math.random()*150 }); barrierSpawnTimer = 0; }
         doubleSpawnTimer += dt * 1000;
-        if (doubleSpawnTimer > 15000) { items.push({ type: 'double', x: canvas.width + 200, y: groundY - 250 - Math.random()*150 }); doubleSpawnTimer = 0; }
+        if (doubleSpawnTimer > 15000) { items.push({ type: 'double', x: V_WIDTH + 200, y: groundY - 250 - Math.random()*150 }); doubleSpawnTimer = 0; }
 
-        const moveSpeed = (1750 + score * 0.6) * dt;
+        // スピード感維持
+        const moveSpeed = (1300 + score * 0.7) * dt;
         items.forEach((it, i) => {
             it.x -= moveSpeed;
-            if (Math.hypot(rabbit.x-it.x, rabbit.y-it.y) < 95) {
+            if (Math.hypot(rabbit.x-it.x, rabbit.y-it.y) < 100) {
                 if (it.type === 'barrier') { se.getBarrier(); hasBarrier = true; barrierIcon.style.display="flex"; barrierIcon.classList.add("active"); }
                 else { se.getDouble(); doubleActive = true; doubleTimeLeft = 3; doubleInd.style.display = "block"; }
                 items.splice(i, 1);
@@ -186,46 +186,44 @@
         });
         obstacles.forEach((o, i) => {
             o.x -= moveSpeed;
-            if (Math.abs(rabbit.x-o.x) < o.size*0.72 && Math.abs((rabbit.y+40)-(o.y-o.size*0.6)) < o.size*0.9) {
+            if (Math.abs(rabbit.x-o.x) < o.size*0.7 && Math.abs((rabbit.y+40)-(o.y-o.size*0.5)) < o.size*0.8) {
                 if (barrierActive) { barrierActive = false; barrierIcon.style.display="none"; obstacles.splice(i, 1); se.getBarrier(); }
-                else { 
-                    se.crash(); 
-                    gameActive = false; 
-                    statusMsg.innerText = "リトライしますか？";
-                    deathText.style.display = "block";
-                    overlay.style.display="flex"; 
-                }
+                else { se.crash(); gameActive = false; statusMsg.innerText = "もう一度挑戦？"; deathText.style.display = "block"; overlay.style.display="flex"; }
             }
         });
     }
 
     function draw() {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = "#87CEEB"; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = "#558B2F"; ctx.fillRect(0,groundY,canvas.width,canvas.height-groundY);
+        ctx.clearRect(0,0,V_WIDTH,V_HEIGHT);
+        ctx.fillStyle = "#87CEEB"; ctx.fillRect(0,0,V_WIDTH,V_HEIGHT);
+        ctx.fillStyle = "#558B2F"; ctx.fillRect(0,groundY,V_WIDTH,V_HEIGHT-groundY);
+        
         items.forEach(it => {
-            ctx.save(); ctx.translate(it.x, it.y); ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2);
+            ctx.save(); ctx.translate(it.x, it.y);
+            ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2);
             const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 45);
-            if (it.type === 'barrier') { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#00d2ff"); ctx.fillStyle = grad; ctx.fill(); ctx.fillStyle = "white"; ctx.font = "bold 35px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🛡️", 0, 12); }
-            else { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#ff9800"); ctx.fillStyle = grad; ctx.fill(); ctx.fillStyle = "#000"; ctx.font = "bold 35px sans-serif"; ctx.textAlign = "center"; ctx.fillText("×2", 0, 12); }
+            if (it.type === 'barrier') { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#00d2ff"); ctx.fillStyle = grad; }
+            else { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#ff9800"); ctx.fillStyle = grad; }
+            ctx.fill(); ctx.fillStyle = it.type==='barrier'?"white":"#000"; ctx.font = "bold 35px sans-serif"; ctx.textAlign = "center"; ctx.fillText(it.type==='barrier'?"🛡️":"×2", 0, 12);
             ctx.stroke(); ctx.restore();
         });
+
         obstacles.forEach(o => {
             ctx.save(); ctx.translate(o.x, o.y); ctx.fillStyle = "#795548"; ctx.strokeStyle = "#2D1B15"; ctx.lineWidth = 5;
             [{oy:0,w:o.size,h:o.size*0.45},{oy:-o.size*0.45,w:o.size*0.75,h:o.size*0.35},{oy:-o.size*0.85,w:o.size*0.45,h:o.size*0.3}].forEach(l=>{ ctx.beginPath();ctx.ellipse(0,l.oy,l.w,l.h,0,0,Math.PI*2);ctx.fill();ctx.stroke(); });
             ctx.restore();
         });
+
         ctx.save(); ctx.translate(rabbit.x, rabbit.y);
-        if (barrierActive) { ctx.shadowBlur = 40; ctx.shadowColor = `hsl(${Date.now() % 360}, 100%, 70%)`; ctx.filter = `hue-rotate(${Date.now() % 360}deg)`; }
-        else if (doubleActive) { ctx.shadowBlur = 30; ctx.shadowColor = "#ffeb3b"; ctx.filter = "brightness(1.5) sepia(1) saturate(5) hue-rotate(10deg)"; }
+        if (barrierActive) { ctx.shadowBlur = 40; ctx.shadowColor = "#00d2ff"; }
+        else if (doubleActive) { ctx.shadowBlur = 30; ctx.shadowColor = "#ffeb3b"; }
         [[-0.5,-1.1,-0.1],[0.5,-1.1,0.1]].forEach(p=>{
-            ctx.fillStyle="white";ctx.beginPath();ctx.ellipse(p[0]*55,p[1]*55,55*0.3,55,p[2],0,Math.PI*2);ctx.fill();ctx.stroke();
-            ctx.fillStyle="#FFC0CB";ctx.beginPath();ctx.ellipse(p[0]*55,p[1]*55,55*0.15,55*0.7,p[2],0,Math.PI*2);ctx.fill();
+            ctx.fillStyle="white";ctx.beginPath();ctx.ellipse(p[0]*55,p[1]*55,16,55,p[2],0,Math.PI*2);ctx.fill();ctx.stroke();
+            ctx.fillStyle="#FFC0CB";ctx.beginPath();ctx.ellipse(p[0]*55,p[1]*55,8,38,p[2],0,Math.PI*2);ctx.fill();
         });
         ctx.fillStyle="white";ctx.beginPath();ctx.arc(0,0,55,0,Math.PI*2);ctx.fill();ctx.stroke();
-        const drawEye=(ex)=>{ ctx.fillStyle="#000";ctx.beginPath();ctx.ellipse(ex,-11,10,19,0,0,Math.PI*2);ctx.fill(); };
-        drawEye(-19); drawEye(19);
-        if (barrierActive) { ctx.beginPath(); ctx.strokeStyle = "#00d2ff"; ctx.lineWidth = 10; ctx.arc(0, 0, 75, 0, Math.PI*2); ctx.stroke(); }
+        ctx.fillStyle="#000";ctx.beginPath();ctx.ellipse(-19,-11,10,19,0,0,Math.PI*2);ctx.ellipse(19,-11,10,19,0,0,Math.PI*2);ctx.fill();
+        if (barrierActive) { ctx.beginPath(); ctx.strokeStyle = "#00d2ff"; ctx.lineWidth = 10; ctx.arc(0, 0, 80, 0, Math.PI*2); ctx.stroke(); }
         ctx.restore();
     }
 
