@@ -24,7 +24,6 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* オーバーレイを全画面にしてどこでも押せるように */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
@@ -38,7 +37,7 @@
     </style>
 </head>
 <body>
-    <div id="overlay" onclick="startGame()">
+    <div id="overlay">
         <div class="msg-box">
             <div id="statusMsg" class="msg">🐰 POOP DASH RABBIT 🐰</div>
             <div id="deathText" class="death-msg">死んじゃった( ﾉД`)ｼｸｼｸ…</div>
@@ -47,7 +46,7 @@
     </div>
 
     <div id="ui">
-        <div id="barrierIcon" onclick="activateBarrier(event)">
+        <div id="barrierIcon">
             <span style="font-size:32px">🛡️</span>
             <div id="barrierTimer" style="position:absolute;bottom:-25px;color:#00d2ff;font-weight:bold;font-size:18px;text-shadow:1px 1px 0 #000;"></div>
         </div>
@@ -70,9 +69,13 @@
     const deathText = document.getElementById("deathText");
 
     let audioCtx;
-    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    function initAudio() { 
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    
     function playSynth(freq, type, duration, vol=0.1, slide=0) {
-        initAudio(); if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!audioCtx) return;
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
         osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         if (slide !== 0) osc.frequency.exponentialRampToValueAtTime(freq + slide, audioCtx.currentTime + duration);
@@ -94,51 +97,58 @@
         crash: () => playSynth(100, 'sawtooth', 0.6, 0.2, -50)
     };
 
-    const V_WIDTH = 1000; 
-    const V_HEIGHT = 1600; 
+    const V_WIDTH = 1000; const V_HEIGHT = 1600; 
     function resize() { canvas.width = V_WIDTH; canvas.height = V_HEIGHT; }
     window.addEventListener('resize', resize); resize();
 
     let score = 0, gameActive = false, lastTime = performance.now();
     let spawnTimer = 0, barrierSpawnTimer = 0, doubleSpawnTimer = 0, nextSpawnTime = 500;
     const groundY = V_HEIGHT * 0.88;
-
     let hasBarrier = false, barrierActive = false, barrierTimeLeft = 0;
     let doubleActive = false, doubleTimeLeft = 0;
-
     const rabbit = { x: V_WIDTH * 0.25, y: groundY - 100, dy: 0, jump: -2450, grav: 11000, grounded: false };
     const obstacles = [], items = [];
 
-    function startGame() {
+    // ★スマホ対応を強化した開始処理
+    function handleStart(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         initAudio();
         if (!gameActive) { 
             reset(); 
             overlay.style.display = "none"; 
             gameActive = true; 
+            lastTime = performance.now();
+            requestAnimationFrame(loop);
         }
     }
+    overlay.addEventListener("touchstart", handleStart);
+    overlay.addEventListener("mousedown", handleStart);
 
     function reset() {
         score = 0; scoreEl.innerText = 0; obstacles.length = 0; items.length = 0;
         hasBarrier = false; barrierActive = false; doubleActive = false;
         doubleInd.style.display = "none"; barrierIcon.style.display="none";
-        deathText.style.display = "none"; // 死んだ時以外は隠す
+        deathText.style.display = "none";
         rabbit.dy = 0; rabbit.y = groundY - 65; spawnTimer = 0; 
         barrierSpawnTimer = 0; doubleSpawnTimer = 0;
-        lastTime = performance.now();
     }
 
-    function activateBarrier(e) {
-        if (e) e.stopPropagation();
+    // バリアボタン
+    barrierIcon.addEventListener("touchstart", (e) => {
+        e.stopPropagation(); e.preventDefault();
         if (hasBarrier && !barrierActive && gameActive) {
-            se.useBarrier();
-            hasBarrier = false; barrierActive = true; barrierTimeLeft = 6;
+            se.useBarrier(); hasBarrier = false; barrierActive = true; barrierTimeLeft = 6;
         }
-    }
+    });
 
-    const doJump = () => { if (gameActive && rabbit.grounded) { rabbit.dy = rabbit.jump; rabbit.grounded = false; se.jump(); } };
-    window.addEventListener("touchstart", (e) => { if (e.target.closest("#barrierIcon")) return; doJump(); e.preventDefault(); }, { passive: false });
-    window.addEventListener("mousedown", (e) => { if (e.target.closest("#barrierIcon")) return; doJump(); });
+    // ジャンプ操作
+    const doJump = (e) => {
+        if (!gameActive) return;
+        if (e && e.target.closest("#barrierIcon")) return;
+        if (rabbit.grounded) { rabbit.dy = rabbit.jump; rabbit.grounded = false; se.jump(); }
+    };
+    window.addEventListener("touchstart", (e) => { if(gameActive) { doJump(e); e.preventDefault(); } }, { passive: false });
+    window.addEventListener("mousedown", (e) => { if(gameActive) doJump(e); });
 
     function update(dt) {
         if (!gameActive) return;
@@ -148,16 +158,13 @@
             if (doubleTimeLeft <= 0) { doubleActive = false; doubleInd.style.display = "none"; }
         }
         score += scoreGain; scoreEl.innerText = Math.floor(score);
-
         if (barrierActive) {
             barrierTimeLeft -= dt;
             barrierTimerEl.innerText = Math.ceil(barrierTimeLeft) + "s";
             if (barrierTimeLeft <= 0) { barrierActive = false; barrierTimerEl.innerText = ""; barrierIcon.style.display="none"; }
         }
-
         rabbit.dy += rabbit.grav * dt; rabbit.y += rabbit.dy * dt;
         if (rabbit.y > groundY - 65) { rabbit.y = groundY - 65; rabbit.dy = 0; rabbit.grounded = true; }
-
         spawnTimer += dt * 1000;
         if (spawnTimer > nextSpawnTime) {
             obstacles.push({ x: V_WIDTH + 200, y: groundY, size: Math.random()*20+60 });
@@ -182,11 +189,8 @@
             if (Math.abs(rabbit.x-o.x) < o.size*0.7 && Math.abs((rabbit.y+40)-(o.y-o.size*0.5)) < o.size*0.8) {
                 if (barrierActive) { barrierActive = false; barrierIcon.style.display="none"; obstacles.splice(i, 1); se.getBarrier(); }
                 else { 
-                    se.crash(); 
-                    gameActive = false; 
-                    statusMsg.innerText = "GAMEOVER"; 
-                    deathText.style.display = "block"; // 死んだら表示
-                    overlay.style.display="flex"; 
+                    se.crash(); gameActive = false; statusMsg.innerText = "GAMEOVER"; 
+                    deathText.style.display = "block"; overlay.style.display="flex"; 
                 }
             }
         });
@@ -196,23 +200,19 @@
         ctx.clearRect(0,0,V_WIDTH,V_HEIGHT);
         ctx.fillStyle = "#87CEEB"; ctx.fillRect(0,0,V_WIDTH,V_HEIGHT);
         ctx.fillStyle = "#558B2F"; ctx.fillRect(0,groundY,V_WIDTH,V_HEIGHT-groundY);
-        
         items.forEach(it => {
-            ctx.save(); ctx.translate(it.x, it.y);
-            ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2);
+            ctx.save(); ctx.translate(it.x, it.y); ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2);
             const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 45);
             if (it.type === 'barrier') { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#00d2ff"); ctx.fillStyle = grad; }
             else { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#ff9800"); ctx.fillStyle = grad; }
             ctx.fill(); ctx.fillStyle = it.type==='barrier'?"white":"#000"; ctx.font = "bold 35px sans-serif"; ctx.textAlign = "center"; ctx.fillText(it.type==='barrier'?"🛡️":"×2", 0, 12);
             ctx.stroke(); ctx.restore();
         });
-
         obstacles.forEach(o => {
             ctx.save(); ctx.translate(o.x, o.y); ctx.fillStyle = "#795548"; ctx.strokeStyle = "#2D1B15"; ctx.lineWidth = 5;
             [{oy:0,w:o.size,h:o.size*0.45},{oy:-o.size*0.45,w:o.size*0.75,h:o.size*0.35},{oy:-o.size*0.85,w:o.size*0.45,h:o.size*0.3}].forEach(l=>{ ctx.beginPath();ctx.ellipse(0,l.oy,l.w,l.h,0,0,Math.PI*2);ctx.fill();ctx.stroke(); });
             ctx.restore();
         });
-
         ctx.save(); ctx.translate(rabbit.x, rabbit.y);
         if (barrierActive) { ctx.shadowBlur = 40; ctx.shadowColor = "#00d2ff"; }
         else if (doubleActive) { ctx.shadowBlur = 30; ctx.shadowColor = "#ffeb3b"; }
@@ -226,8 +226,11 @@
         ctx.restore();
     }
 
-    function loop(t) { let dt = (t - lastTime) / 1000; if (dt > 0.05) dt = 0.05; lastTime = t; update(dt); draw(); requestAnimationFrame(loop); }
-    requestAnimationFrame(loop);
+    function loop(t) { 
+        if (!gameActive) return;
+        let dt = (t - lastTime) / 1000; if (dt > 0.05) dt = 0.05; lastTime = t; 
+        update(dt); draw(); requestAnimationFrame(loop); 
+    }
 </script>
 </body>
 </html>
