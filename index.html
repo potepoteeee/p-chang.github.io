@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dung Dash Rabbit: Mobile Edition</title>
+    <title>POOP DASH RABBIT MOBILE</title>
     <style>
         * { box-sizing: border-box; touch-action: none; margin: 0; padding: 0; overflow: hidden; }
         body { width: 100vw; height: 100vh; background-color: #111; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
         canvas { background-color: #87CEEB; display: block; width: 100%; height: 100%; object-fit: contain; }
         
-        /* UI位置の調整（端っこすぎないように） */
         #ui { position: absolute; top: 40px; left: 0; width: 100%; pointer-events: none; z-index: 10; display: flex; justify-content: center; align-items: center; padding: 0 20px; }
         .score-container { display: flex; align-items: center; margin-left: 15px; }
         .score-num { font-size: 50px; color: #ffeb3b; font-weight: bold; text-shadow: 3px 3px 0 #000; }
@@ -23,34 +22,30 @@
         #barrierIcon.active { display: flex; cursor: pointer; animation: pulse 0.8s infinite; }
 
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* リトライ画面をコンパクトに修正 */
+        /* オーバーレイを全画面にしてどこでも押せるように */
         #overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 85%; max-width: 400px; height: auto; padding: 30px;
-            background: rgba(0,0,0,0.9); border: 2px solid #555; border-radius: 20px;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 20; color: white; text-align: center; cursor: pointer;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20; color: white;
+            text-align: center; cursor: pointer;
         }
-        .msg { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #fff; }
-        .death-msg { font-size: 26px; color: #ff4444; margin-bottom: 15px; font-weight: bold; }
-        .rule-box { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; margin-bottom: 15px; width: 100%; }
-        .rule { font-size: 13px; color: #00d2ff; margin-bottom: 5px; text-align: left; }
-        .start-btn { font-size: 22px; color: #ffeb3b; margin-top: 5px; animation: flash 1.5s infinite; font-weight: bold; }
+        .msg-box { width: 85%; max-width: 400px; pointer-events: none; }
+        .msg { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .death-msg { font-size: 28px; color: #ff4444; margin-bottom: 20px; font-weight: bold; display: none; }
+        .start-btn { font-size: 24px; color: #ffeb3b; margin-top: 20px; animation: flash 1s infinite; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="overlay" onclick="startGame()">
-        <div id="statusMsg" class="msg">🐰 ウサギを汚物から逃がそう！</div>
-        <div id="deathText" class="death-msg">死んじゃった( ﾉД`)ｼｸｼｸ…</div>
-        <div class="rule-box">
-            <div class="rule">・【ジャンプ】タップ！</div>
-            <div class="rule">・【バリア】アイコンタップ</div>
-            <div class="rule">・【×2】3秒間スコア2倍！</div>
+        <div class="msg-box">
+            <div id="statusMsg" class="msg">🐰 POOP DASH RABBIT 🐰</div>
+            <div id="deathText" class="death-msg">死んじゃった( ﾉД`)ｼｸｼｸ…</div>
+            <div class="start-btn">TAP TO START</div>
         </div>
-        <div class="start-btn">タップでスタート！</div>
     </div>
+
     <div id="ui">
         <div id="barrierIcon" onclick="activateBarrier(event)">
             <span style="font-size:32px">🛡️</span>
@@ -111,7 +106,6 @@
     let hasBarrier = false, barrierActive = false, barrierTimeLeft = 0;
     let doubleActive = false, doubleTimeLeft = 0;
 
-    // ★ジャンプ力を抑え、重力を強めて「飛びすぎ」を防止
     const rabbit = { x: V_WIDTH * 0.25, y: groundY - 100, dy: 0, jump: -2450, grav: 11000, grounded: false };
     const obstacles = [], items = [];
 
@@ -120,7 +114,6 @@
         if (!gameActive) { 
             reset(); 
             overlay.style.display = "none"; 
-            deathText.style.display = "none";
             gameActive = true; 
         }
     }
@@ -129,6 +122,7 @@
         score = 0; scoreEl.innerText = 0; obstacles.length = 0; items.length = 0;
         hasBarrier = false; barrierActive = false; doubleActive = false;
         doubleInd.style.display = "none"; barrierIcon.style.display="none";
+        deathText.style.display = "none"; // 死んだ時以外は隠す
         rabbit.dy = 0; rabbit.y = groundY - 65; spawnTimer = 0; 
         barrierSpawnTimer = 0; doubleSpawnTimer = 0;
         lastTime = performance.now();
@@ -174,7 +168,6 @@
         doubleSpawnTimer += dt * 1000;
         if (doubleSpawnTimer > 15000) { items.push({ type: 'double', x: V_WIDTH + 200, y: groundY - 250 - Math.random()*150 }); doubleSpawnTimer = 0; }
 
-        // スピード感維持
         const moveSpeed = (1300 + score * 0.7) * dt;
         items.forEach((it, i) => {
             it.x -= moveSpeed;
@@ -188,7 +181,13 @@
             o.x -= moveSpeed;
             if (Math.abs(rabbit.x-o.x) < o.size*0.7 && Math.abs((rabbit.y+40)-(o.y-o.size*0.5)) < o.size*0.8) {
                 if (barrierActive) { barrierActive = false; barrierIcon.style.display="none"; obstacles.splice(i, 1); se.getBarrier(); }
-                else { se.crash(); gameActive = false; statusMsg.innerText = "もう一度挑戦？"; deathText.style.display = "block"; overlay.style.display="flex"; }
+                else { 
+                    se.crash(); 
+                    gameActive = false; 
+                    statusMsg.innerText = "GAMEOVER"; 
+                    deathText.style.display = "block"; // 死んだら表示
+                    overlay.style.display="flex"; 
+                }
             }
         });
     }
