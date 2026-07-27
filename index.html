@@ -1,280 +1,1333 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POOP DASH RABBIT MOBILE</title>
-    <style>
-        * { box-sizing: border-box; touch-action: none; margin: 0; padding: 0; overflow: hidden; }
-        body { width: 100vw; height: 100vh; background-color: #111; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
-        canvas { background-color: #87CEEB; display: block; width: 100%; height: 100%; object-fit: contain; }
-        
-        #ui { position: absolute; top: 40px; left: 0; width: 100%; pointer-events: none; z-index: 10; display: flex; justify-content: center; align-items: center; padding: 0 20px; }
-        .score-container { display: flex; align-items: center; margin-left: 15px; }
-        .score-num { font-size: 50px; color: #ffeb3b; font-weight: bold; text-shadow: 3px 3px 0 #000; }
-        #doubleIndicator { font-size: 30px; color: #000; font-weight: bold; margin-left: 10px; display: none; animation: flash 0.5s infinite; }
-        
-        #barrierIcon {
-            width: 70px; height: 70px; background: rgba(0, 150, 255, 0.4); border: 4px solid #00d2ff;
-            border-radius: 50%; display: none; justify-content: center; align-items: center;
-            position: relative;
-        }
-        #barrierIcon.active { display: flex; animation: pulse 0.8s infinite; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Unchi Dash Rabbit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#bfe8ff;
+    --sky-bottom:#ffe3f1;
+    --grass:#7fd99a;
+    --grass-dark:#5cbf7c;
+    --dirt:#e8c27e;
+    --ink:#3a2e39;
+    --accent:#ff6fa5;
+    --accent-dark:#e04f88;
+    --teal:#34c6b0;
+    --teal-dark:#25a894;
+    --coin:#ffd166;
+    --boost:#ff4757;
+    --panel:#fff8f0;
+    --panel-line:#f0d9c8;
+    --common:#9e9e9e;
+    --rare:#4fa8f0;
+    --epic:#b060f0;
+    --legendary:#ff9d2e;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; overflow:hidden;
+    overscroll-behavior:none; touch-action:none;
+    font-family:'Kosugi Maru','Baloo 2',sans-serif;
+    color:var(--ink);
+    background:#14141c;
+  }
+  body{
+    display:flex; align-items:center; justify-content:center;
+  }
+  #gameFrame{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    max-width: calc(100vh * 0.5625); /* 9:16 ratio */
+    max-height: calc(100vw / 0.5625);
+    background:#000;
+    overflow:hidden;
+    box-shadow:0 0 60px rgba(0,0,0,.6);
+  }
+  #gameCanvas{
+    position:absolute; top:0; left:0; display:block;
+    touch-action:none;
+  }
+  .num{font-family:'Baloo 2',sans-serif;}
 
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  /* ---------- SPLASH / INTRO LOGO ---------- */
+  #splashScreen{
+    position:absolute; inset:0; z-index:99;
+    background:#14141c; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    transition: opacity 0.8s ease, visibility 0.8s;
+  }
+  #splashScreen.fade-out{ opacity:0; visibility:hidden; pointer-events:none; }
+  .studio-logo{
+    font-size:14px; letter-spacing:0.2em; color:#a0a0b0; text-transform:uppercase; margin-bottom:8px;
+  }
+  .studio-title{
+    font-family:'Baloo 2',sans-serif; font-size:min(8vw,32px); font-weight:800;
+    color:#fff; text-shadow:0 0 12px var(--accent);
+  }
 
-        #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 20; color: white;
-            text-align: center; cursor: pointer;
-        }
-        .msg-box { width: 85%; max-width: 400px; pointer-events: none; }
-        .msg { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #fff; }
-        .death-msg { font-size: 28px; color: #ff4444; margin-bottom: 20px; font-weight: bold; display: none; }
-        .start-btn { font-size: 24px; color: #ffeb3b; margin-top: 20px; animation: flash 1s infinite; font-weight: bold; }
-    </style>
+  /* ---------- HUD (play screen) ---------- */
+  #hud{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    pointer-events:none;
+  }
+  #hud.hidden{display:none;}
+  #distPanel{
+    position:absolute; top:calc(10px + env(safe-area-inset-top)); left:14px;
+    background:rgba(255,248,240,.88); border:3px solid var(--panel-line);
+    border-radius:16px; padding:6px 14px; box-shadow:0 4px 0 rgba(0,0,0,.08);
+  }
+  #distPanel .label{font-size:11px; opacity:.65; letter-spacing:.05em;}
+  #distPanel .value{font-size:24px; font-weight:800; line-height:1.1; color:var(--accent-dark);}
+  #distPanel .unit{font-size:14px; font-weight:800; margin-left:2px; color:var(--ink);}
+
+  #pauseBtn{
+    position:absolute; top:calc(10px + env(safe-area-inset-top)); right:14px;
+    width:48px; height:48px; border-radius:50%; border:3px solid var(--panel-line);
+    background:rgba(255,248,240,.9); font-size:20px; pointer-events:auto;
+    box-shadow:0 4px 0 rgba(0,0,0,.08); cursor:pointer;
+  }
+  #coinRow{
+    position:absolute; top:calc(10px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    background:rgba(255,248,240,.88); border:3px solid var(--panel-line); border-radius:16px;
+    padding:6px 14px; font-weight:800; font-size:16px; display:flex; align-items:center; gap:6px;
+    box-shadow:0 4px 0 rgba(0,0,0,.08);
+  }
+  #boostBanner{
+    position:absolute; top:calc(64px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    background:linear-gradient(90deg, #ff4757, #ff6b81); color:#fff; border:2px solid #fff;
+    border-radius:20px; padding:4px 16px; font-weight:800; font-size:14px;
+    box-shadow:0 4px 10px rgba(255,71,87,0.4); display:none; animation:pulse 0.6s infinite alternate;
+  }
+
+  /* ---------- overlay screens ---------- */
+  .screen{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; text-align:center; padding:20px;
+    background:linear-gradient(180deg, rgba(191,232,255,.55), rgba(255,227,241,.75));
+    backdrop-filter: blur(2px);
+  }
+  .screen.hidden{display:none;}
+  .title-main{
+    font-family:'Baloo 2',sans-serif; font-weight:800; font-size:min(11vw,40px);
+    line-height:1.05;
+    color:var(--accent-dark); text-shadow:3px 3px 0 #fff, 3px 3px 0 #fff;
+    -webkit-text-stroke:1.5px var(--accent-dark);
+    margin:0 0 2px 0;
+  }
+  .studio-subtag{
+    font-size:11px; font-weight:800; color:var(--accent-dark); opacity:.8; letter-spacing:0.1em; margin-bottom:12px;
+  }
+  .tap-to-start{
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:min(6.5vw,26px);
+    color:var(--panel); background:var(--accent); padding:10px 32px; border-radius:40px;
+    border:4px solid #fff; box-shadow:0 6px 0 var(--accent-dark);
+    animation:pulse 1.15s ease-in-out infinite;
+    letter-spacing:.08em; cursor:pointer;
+  }
+  @keyframes pulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.06);} }
+
+  .top-right-icons{position:absolute; top:calc(14px + env(safe-area-inset-top)); right:14px; display:flex; gap:10px;}
+  .top-left-coin{
+    position:absolute; top:calc(14px + env(safe-area-inset-top)); left:14px;
+    background:var(--panel); border:3px solid var(--panel-line); border-radius:20px;
+    padding:6px 16px; font-weight:800; display:flex; align-items:center; gap:6px; font-size:15px;
+  }
+  .icon-btn{
+    width:46px; height:46px; border-radius:50%; border:3px solid var(--panel-line);
+    background:var(--panel); font-size:20px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 0 rgba(0,0,0,.08); cursor:pointer;
+  }
+
+  .equipped-preview{
+    width:min(34vw,130px); height:min(34vw,130px); border-radius:24px;
+    background:radial-gradient(circle at 50% 40%, #fff, #ffe9d6);
+    border:4px solid #fff; box-shadow:0 6px 0 rgba(0,0,0,.1);
+    display:flex; align-items:center; justify-content:center; margin-bottom:8px;
+  }
+  .skin-name-tag{
+    font-weight:800; font-size:14px; background:var(--panel); border:2px solid var(--panel-line);
+    border-radius:14px; padding:3px 14px; margin-bottom:14px;
+  }
+  .menu-buttons{display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; justify-content:center;}
+  .btn{
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:15px; color:#fff;
+    background:var(--teal); border:3px solid #fff; border-radius:30px; padding:10px 20px;
+    box-shadow:0 5px 0 var(--teal-dark); cursor:pointer;
+  }
+  .btn.pink{background:var(--accent); box-shadow:0 5px 0 var(--accent-dark);}
+  .btn.gold{background:#ff9d2e; box-shadow:0 5px 0 #d67a11;}
+  .btn:active{transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,.2);}
+
+  /* ---------- panel (shop / settings / pause / gameover / gacha) ---------- */
+  .panel{
+    width:min(92vw,420px); max-height:85vh; overflow-y:auto;
+    background:var(--panel); border:4px solid #fff; border-radius:26px;
+    box-shadow:0 10px 0 rgba(0,0,0,.12); padding:18px 16px 22px; position:relative;
+  }
+  .panel h2{
+    font-family:'Baloo 2',sans-serif; margin:2px 0 12px; font-size:22px; color:var(--accent-dark);
+  }
+  .close-x{
+    position:absolute; top:10px; right:14px; font-size:22px; cursor:pointer; opacity:.5;
+  }
+
+  /* shop grid */
+  #skinGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
+  .skin-card{
+    background:#fff; border:3px solid var(--panel-line); border-radius:18px; padding:8px;
+    display:flex; flex-direction:column; align-items:center; position:relative; cursor:pointer;
+  }
+  .skin-card.equipped{border-color:var(--teal); box-shadow:0 0 0 3px rgba(52,198,176,.35);}
+  .skin-card.locked{opacity:0.75; filter:grayscale(0.3);}
+  .skin-card canvas{width:70px; height:70px;}
+  .rarity-badge{
+    font-size:10px; font-weight:800; color:#fff; border-radius:8px; padding:1px 8px; margin-bottom:2px;
+  }
+  .skin-name{font-size:12px; font-weight:800; margin:2px 0 4px;}
+  .skin-price{
+    font-size:11px; font-weight:800; background:var(--coin); border-radius:10px; padding:2px 8px;
+    display:flex; align-items:center; gap:3px;
+  }
+  .skin-status{font-size:11px; font-weight:800; color:var(--teal-dark);}
+
+  /* gacha modal */
+  #gachaModal{
+    position:absolute; inset:0; z-index:10; background:rgba(0,0,0,0.7); backdrop-filter:blur(3px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;
+  }
+  #gachaModal.hidden{display:none;}
+  .gacha-box{
+    background:var(--panel); border:4px solid #fff; border-radius:26px; padding:20px;
+    width:min(85vw,340px); display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+
+  /* settings */
+  .setting-row{margin-bottom:16px; text-align:left;}
+  .setting-row label{font-size:13px; font-weight:800; display:flex; justify-content:space-between;}
+  input[type=range]{width:100%; accent-color:var(--accent);}
+  .tos-box{
+    text-align:left; font-size:11px; line-height:1.5; background:#fff; border:2px solid var(--panel-line);
+    border-radius:12px; padding:10px; max-height:130px; overflow-y:auto; margin-top:6px;
+  }
+
+  /* gameover */
+  .result-row{display:flex; justify-content:space-between; font-size:15px; font-weight:800; padding:8px 4px; border-bottom:1px dashed var(--panel-line);}
+  .result-row .num{color:var(--accent-dark);}
+  .coin-gain{color:var(--teal-dark) !important;}
+
+  #btnHiddenAudioUnlock{display:none;}
+</style>
 </head>
 <body>
-    <div id="overlay">
-        <div class="msg-box">
-            <div id="statusMsg" class="msg">🐰 POOP DASH RABBIT 🐰</div>
-            <div id="deathText" class="death-msg">死んじゃった( ﾉД`)ｼｸｼｸ…</div>
-            <div class="start-btn">TAP TO START</div>
-        </div>
-    </div>
 
-    <div id="ui">
-        <div id="barrierIcon">
-            <span style="font-size:32px">🛡️</span>
-            <div id="barrierTimer" style="position:absolute;bottom:-25px;color:#00d2ff;font-weight:bold;font-size:18px;text-shadow:1px 1px 0 #000;"></div>
-        </div>
-        <div class="score-container">
-            <div class="score-num" id="scoreBoard">0</div>
-            <div id="doubleIndicator">×2</div>
-        </div>
+<div id="gameFrame">
+<canvas id="gameCanvas"></canvas>
+
+<!-- ================= SPLASH LOGO ================= -->
+<div id="splashScreen">
+  <div class="studio-logo">Produced by</div>
+  <div class="studio-title">Made in p-chang studio</div>
+</div>
+
+<!-- ================= HUD (during play) ================= -->
+<div id="hud" class="hidden">
+  <div id="distPanel">
+    <div class="label">きょり</div>
+    <div><span class="value num" id="distValue">0</span><span class="unit">m</span></div>
+  </div>
+  <div id="coinRow">🪙 <span id="runCoinValue" class="num">0</span></div>
+  <div id="boostBanner">⚡ 2倍コイン獲得中！</div>
+  <button id="pauseBtn">⏸</button>
+</div>
+
+<!-- ================= START / MENU ================= -->
+<div id="menuScreen" class="screen">
+  <div class="top-left-coin">🪙 <span id="menuCoinValue" class="num">0</span></div>
+  <div class="top-right-icons">
+    <div class="icon-btn" id="settingsBtn">⚙️</div>
+  </div>
+  <h1 class="title-main">UNCHI DASH<br>RABBIT</h1>
+  <div class="studio-subtag">Made in p-chang studio</div>
+
+  <div class="equipped-preview"><canvas id="menuSkinCanvas" width="130" height="130"></canvas></div>
+  <div class="skin-name-tag" id="equippedNameTag">しろうさぎ</div>
+
+  <div class="tap-to-start" id="tapToStart">TAP TO START</div>
+
+  <div class="menu-buttons">
+    <div class="btn pink" id="openShopBtn">🐰 スキン一覧</div>
+    <div class="btn gold" id="openGachaBtn">🎁 ガチャ (300🪙)</div>
+  </div>
+</div>
+
+<!-- ================= SHOP ================= -->
+<div id="shopScreen" class="screen hidden">
+  <div class="panel">
+    <div class="close-x" id="closeShopBtn">✕</div>
+    <h2>🐰 うさぎスキン (全50種)</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:800;font-size:13px;">
+      <div>所持数: <span id="ownedCount" class="num" style="color:var(--accent-dark);">1</span> / 50</div>
+      <div>🪙 <span id="shopCoinValue" class="num">0</span></div>
     </div>
-    <canvas id="game"></canvas>
+    <div id="skinGrid"></div>
+  </div>
+</div>
+
+<!-- ================= GACHA MODAL ================= -->
+<div id="gachaModal" class="hidden">
+  <div class="gacha-box">
+    <h2 style="margin-top:0;color:var(--accent-dark);">🎁 スキンガチャ</h2>
+    <div id="gachaAnimArea" style="width:120px;height:120px;margin:10px 0;display:flex;align-items:center;justify-content:center;">
+      <canvas id="gachaSkinCanvas" width="120" height="120"></canvas>
+    </div>
+    <div id="gachaResultName" style="font-weight:800;font-size:16px;margin-bottom:12px;min-height:24px;"></div>
+    <div id="gachaActionBtns" style="display:flex;gap:10px;">
+      <div class="btn gold" id="gachaRollBtn">300🪙で回す</div>
+      <div class="btn" style="background:#a0a0b0;box-shadow:0 5px 0 #787888;" id="gachaCloseBtn">閉じる</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SETTINGS ================= -->
+<div id="settingsScreen" class="screen hidden">
+  <div class="panel">
+    <div class="close-x" id="closeSettingsBtn">✕</div>
+    <h2>⚙️ 設定</h2>
+    <div class="setting-row">
+      <label>BGMの大きさ <span id="bgmVolLabel">50</span></label>
+      <input type="range" id="bgmVolSlider" min="0" max="100" value="50">
+    </div>
+    <div class="setting-row">
+      <label>効果音の大きさ <span id="seVolLabel">70</span></label>
+      <input type="range" id="seVolSlider" min="0" max="100" value="70">
+    </div>
+    <div class="setting-row">
+      <label>利用規約</label>
+      <div class="tos-box">
+        本ゲーム「UNCHI DASH RABBIT」は Made in p-chang studio により提供されるブラウザゲームです。ゲーム内のコイン・スキンは仮想アイテムであり換金等はできません。データはブラウザのローカルストレージに保存されます。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PAUSE ================= -->
+<div id="pauseScreen" class="screen hidden">
+  <div class="panel">
+    <h2>⏸ 一時停止中</h2>
+    <div class="menu-buttons" style="flex-direction:column; gap:12px;">
+      <div class="btn pink" id="resumeBtn">▶ 再開する</div>
+      <div class="btn" id="pauseRetryBtn">🔄 もう一度</div>
+      <div class="btn" style="background:#b0a8a2;box-shadow:0 5px 0 #8f8781;" id="pauseMenuBtn">🏠 メニューへ</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GAME OVER ================= -->
+<div id="gameoverScreen" class="screen hidden">
+  <div class="panel">
+    <h2>💥 ウンチにあたった！</h2>
+    <div class="result-row"><span>走った距離</span><span class="num" id="goDist">0 m</span></div>
+    <div class="result-row"><span>最高記録</span><span class="num" id="goBest">0 m</span></div>
+    <div class="result-row"><span>獲得コイン</span><span class="num coin-gain" id="goCoin">+0 🪙</span></div>
+    <div class="menu-buttons" style="margin-top:16px;">
+      <div class="btn pink" id="retryBtn">🔄 もう一度</div>
+      <div class="btn" id="goMenuBtn">🏠 メニュー</div>
+    </div>
+  </div>
+</div>
+
+<button id="btnHiddenAudioUnlock"></button>
+</div><!-- /#gameFrame -->
 
 <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
-    const scoreEl = document.getElementById("scoreBoard");
-    const doubleInd = document.getElementById("doubleIndicator");
-    const barrierIcon = document.getElementById("barrierIcon");
-    const barrierTimerEl = document.getElementById("barrierTimer");
-    const overlay = document.getElementById("overlay");
-    const statusMsg = document.getElementById("statusMsg");
-    const deathText = document.getElementById("deathText");
+(function(){
+"use strict";
 
-    let audioCtx;
-    let bgmNode = null;
+/* =========================================================
+   0. GENERATE 50 SKINS & SAVE DATA
+========================================================= */
+const SAVE_KEY = 'usagiRunSaveV2';
 
-    function initAudio() { 
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+const SKIN_PALETTES = [
+  { name: 'しろうさぎ', color: '#ffffff', ear: '#ffd3e2', rarity: 'common' },
+  { name: 'ねずみうさぎ', color: '#c3c3cf', ear: '#e6c6d8', rarity: 'common' },
+  { name: 'ちゃいろうさぎ', color: '#cd9a68', ear: '#f2cda3', rarity: 'common' },
+  { name: 'みずいろうさぎ', color: '#7ec8f2', ear: '#ffffff', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'さくらうさぎ', color: '#ffb3d9', ear: '#ffffff', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'まほうウサギ', color: '#b088f9', ear: '#e3cbff', rarity: 'epic', accessory: 'star', glow: true },
+  { name: 'きんめウサギ', color: '#4a4a52', ear: '#6c6c76', rarity: 'epic', accessory: 'goldeye', glow: true },
+  { name: 'レインボーうさぎ', color: 'rainbow', ear: 'rainbow', rarity: 'legendary', accessory: 'star', glow: true },
+  { name: 'キングうさぎ', color: '#fff6db', ear: '#ffe08a', rarity: 'legendary', accessory: 'crown', glow: true },
+  { name: 'ミントウサギ', color: '#a8f0d2', ear: '#ffffff', rarity: 'common' },
+  { name: 'レモンウサギ', color: '#fff385', ear: '#ffeeaa', rarity: 'common' },
+  { name: 'オレンジウサギ', color: '#ffb870', ear: '#ffe5cc', rarity: 'common' },
+  { name: 'パープルウサギ', color: '#d3aef0', ear: '#f1e3fb', rarity: 'common' },
+  { name: 'ピーチウサギ', color: '#ffb7bd', ear: '#ffe0e3', rarity: 'common' },
+  { name: 'スカイウサギ', color: '#9be2f3', ear: '#e0f7fc', rarity: 'common' },
+  { name: '抹茶うさぎ', color: '#a3c983', ear: '#e2f0d5', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'ベリーウサギ', color: '#e65c8a', ear: '#ffc2d6', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'チョコウサギ', color: '#5c3a21', ear: '#d4a888', rarity: 'rare' },
+  { name: 'ソーダウサギ', color: '#52d6e6', ear: '#c2f5fc', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'ルビーウサギ', color: '#e63946', ear: '#ffb3ba', rarity: 'rare' },
+  { name: 'サファイアウサギ', color: '#1d3557', ear: '#a8dadc', rarity: 'rare' },
+  { name: 'エメラルドウサギ', color: '#2a9d8f', ear: '#e9c46a', rarity: 'epic', accessory: 'star' },
+  { name: 'アメジストウサギ', color: '#8d99ae', ear: '#edf2f4', rarity: 'epic', accessory: 'star' },
+  { name: 'ネオンウサギ', color: '#00f5d4', ear: '#7b2cbf', rarity: 'epic', accessory: 'star', glow: true },
+  { name: 'サイバーウサギ', color: '#00bbf9', ear: '#f15bb5', rarity: 'epic', accessory: 'goldeye', glow: true },
+  { name: 'ダークうさぎ', color: '#2b2d42', ear: '#8d99ae', rarity: 'epic', accessory: 'goldeye' },
+  { name: 'エンジェルうさぎ', color: '#ffffff', ear: '#ffd000', rarity: 'legendary', accessory: 'crown', glow: true },
+  { name: 'デビルうさぎ', color: '#3d0814', ear: '#e63946', rarity: 'legendary', accessory: 'goldeye', glow: true },
+  { name: 'ほしぞらうさぎ', color: '#10002b', ear: '#e0aaff', rarity: 'legendary', accessory: 'star', glow: true },
+  { name: 'トロピカルうさぎ', color: '#ff9f1c', ear: '#2ec4b6', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'サクラモチうさぎ', color: '#f7cad0', ear: '#b5e2fa', rarity: 'common' },
+  { name: 'クッキーウサギ', color: '#ddb892', ear: '#b08968', rarity: 'common' },
+  { name: 'パステルウサギ', color: '#cdb4db', ear: '#ffc8dd', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'アクアウサギ', color: '#80ed99', ear: '#c7f9cc', rarity: 'common' },
+  { name: 'サンセットウサギ', color: '#f72585', ear: '#4cc9f0', rarity: 'epic', glow: true },
+  { name: 'ギャラクシーウサギ', color: '#3a0ca3', ear: '#4895ef', rarity: 'legendary', accessory: 'star', glow: true },
+  { name: 'アイスウサギ', color: '#e0f1f7', ear: '#b3e0f2', rarity: 'rare' },
+  { name: 'フレイムウサギ', color: '#ff5400', ear: '#ffbd00', rarity: 'epic', glow: true },
+  { name: 'フォレストウサギ', color: '#386641', ear: '#6a994e', rarity: 'common' },
+  { name: 'ラベンダーウサギ', color: '#e2afff', ear: '#ffffff', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'モノクロウサギ', color: '#111111', ear: '#ffffff', rarity: 'epic', accessory: 'goldeye' },
+  { name: 'プリンウサギ', color: '#ffe169', ear: '#6c584c', rarity: 'common' },
+  { name: 'イチゴミルクうさぎ', color: '#ffccd5', ear: '#ff758f', rarity: 'rare', accessory: 'ribbon' },
+  { name: 'メロンソーダうさぎ', color: '#55a630', ear: '#80b918', rarity: 'common' },
+  { name: 'コスモウサギ', color: '#240046', ear: '#7b2cbf', rarity: 'epic', accessory: 'star', glow: true },
+  { name: 'オーロラウサギ', color: '#70e000', ear: '#38b000', rarity: 'legendary', glow: true },
+  { name: 'ファンタジーうさぎ', color: '#f15bb5', ear: '#fee440', rarity: 'epic', accessory: 'crown' },
+  { name: 'クリスタルうさぎ', color: '#b8c0ff', ear: '#e8e8e8', rarity: 'legendary', accessory: 'star', glow: true },
+  { name: 'ナイトウサギ', color: '#184e77', ear: '#1e6091', rarity: 'rare' },
+];
+
+const SKINS = [];
+for(let i=0; i<49; i++){
+  const p = SKIN_PALETTES[i];
+  SKINS.push({
+    id: 'skin_' + i,
+    name: p.name,
+    rarity: p.rarity,
+    price: 0,
+    color: p.color,
+    ear: p.ear,
+    accessory: p.accessory || null,
+    glow: p.glow || false
+  });
+}
+SKINS.push({
+  id: 'skin_gold_10000',
+  name: '金のウサギ',
+  rarity: 'legendary',
+  price: 10000,
+  color: '#ffe066',
+  ear: '#fff3b0',
+  accessory: 'crown',
+  glow: true
+});
+
+const RARITY_LABEL = {common:'コモン', rare:'レア', epic:'エピック', legendary:'レジェンダリー'};
+const RARITY_COLOR = {common:'#9e9e9e', rare:'#4fa8f0', epic:'#b060f0', legendary:'#ff9d2e'};
+
+function defaultSave(){
+  return {coins:1000, owned:['skin_0'], equipped:'skin_0', bgmVol:50, seVol:70, best:0};
+}
+let save = loadSave();
+function loadSave(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      return Object.assign(defaultSave(), parsed);
     }
-    
-    // BGM生成システム
-    function startBGM() {
-        if (bgmNode) bgmNode.stop();
-        bgmNode = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        bgmNode.type = 'triangle';
-        
-        // シンプルな疾走ベースライン
-        const notes = [110, 110, 164, 110, 146, 110, 164, 130]; 
-        const now = audioCtx.currentTime;
-        let time = now;
-        for (let i = 0; i < 200; i++) { // 約1分間のループデータ
-            const freq = notes[i % notes.length];
-            bgmNode.frequency.setValueAtTime(freq, time);
-            time += 0.15;
-        }
-        
-        gain.gain.setValueAtTime(0.05, now);
-        bgmNode.connect(gain);
-        gain.connect(audioCtx.destination);
-        bgmNode.start();
+  }catch(e){}
+  return defaultSave();
+}
+function persistSave(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){}
+}
+function getSkin(id){ return SKINS.find(s=>s.id===id) || SKINS[0]; }
+
+/* =========================================================
+   1. AUDIO (WebAudio, generated pop SE / BGM)
+========================================================= */
+let actx = null;
+let bgmGain, seGain;
+let bgmTimer = null;
+let bgmStep = 0;
+const BGM_NOTES = [523,659,784,659,523,392,523,659, 784,988,880,784,659,784,659,523];
+function ensureAudio(){
+  if(actx) return;
+  try{
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    bgmGain = actx.createGain(); bgmGain.gain.value = save.bgmVol/100*0.35; bgmGain.connect(actx.destination);
+    seGain = actx.createGain(); seGain.gain.value = save.seVol/100; seGain.connect(actx.destination);
+    startBGM();
+  }catch(e){}
+}
+function tone(freq, dur, type, gainNode, vol, delay){
+  if(!actx) return;
+  const t0 = actx.currentTime + (delay||0);
+  const osc = actx.createOscillator();
+  const g = actx.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol!==undefined?vol:1, t0+0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(g); g.connect(gainNode);
+  osc.start(t0); osc.stop(t0+dur+0.02);
+}
+function playSE(name){
+  if(!actx) return;
+  switch(name){
+    case 'jump': tone(580,0.11,'square',seGain,0.5); tone(880,0.08,'square',seGain,0.35,0.04); break;
+    case 'coin': tone(880,0.09,'triangle',seGain,0.5); tone(1320,0.13,'triangle',seGain,0.5,0.06); break;
+    case 'boost': tone(440,0.1,'sine',seGain,0.6); tone(880,0.1,'sine',seGain,0.6,0.08); tone(1760,0.2,'sine',seGain,0.6,0.16); break;
+    case 'hit':  tone(220,0.18,'sawtooth',seGain,0.55); tone(120,0.28,'sawtooth',seGain,0.5,0.08); break;
+    case 'button': tone(600,0.06,'square',seGain,0.35); break;
+    case 'buy': tone(660,0.09,'triangle',seGain,0.5); tone(880,0.09,'triangle',seGain,0.5,0.08); tone(1100,0.15,'triangle',seGain,0.5,0.16); break;
+    case 'select': tone(740,0.07,'triangle',seGain,0.4); break;
+  }
+}
+function startBGM(){
+  if(bgmTimer) return;
+  bgmStep = 0;
+  bgmTimer = setInterval(()=>{
+    if(!actx) return;
+    const f = BGM_NOTES[bgmStep % BGM_NOTES.length];
+    tone(f, 0.18, 'triangle', bgmGain, 0.9);
+    bgmStep++;
+  }, 210);
+}
+function applyVolumes(){
+  if(bgmGain) bgmGain.gain.value = save.bgmVol/100*0.35;
+  if(seGain) seGain.gain.value = save.seVol/100;
+}
+
+/* =========================================================
+   2. CANVAS SETUP
+========================================================= */
+const canvas = document.getElementById('gameCanvas');
+let ctx = canvas.getContext('2d');
+let W=0,H=0,DPR=1;
+const gameFrame = document.getElementById('gameFrame');
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2.5);
+  W = gameFrame.clientWidth; H = gameFrame.clientHeight;
+  canvas.width = Math.floor(W*DPR); canvas.height = Math.floor(H*DPR);
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  groundH = Math.max(70, H*0.16);
+  groundY = H - groundH;
+}
+window.addEventListener('resize', resize);
+
+let groundH=90, groundY=0;
+
+/* =========================================================
+   3. GAME STATE & VARIABLES
+========================================================= */
+const STATE = {MENU:'menu', SHOP:'shop', SETTINGS:'settings', PLAYING:'playing', PAUSED:'paused', GAMEOVER:'gameover'};
+let state = STATE.MENU;
+
+let rabbit, obstacles, coinsOnField, boostItems, particles, clouds, groundOffset, bgOffset;
+let distance=0, speed=380, runCoins=0, elapsed=0, spawnAt=0, coinSpawnAt=0, boostSpawnAt=0;
+let boostTimer = 0;
+const PPM = 26; // pixels per meter
+
+function resetGameVars(){
+  rabbit = {
+    x: 0, y:0, vy:0, w:0, h:0, grounded:true, jumping:false, runT:0
+  };
+  obstacles = [];
+  coinsOnField = [];
+  boostItems = [];
+  particles = [];
+  distance = 0;
+  speed = 380;
+  runCoins = 0;
+  elapsed = 0;
+  boostTimer = 0;
+  // ★ウンチの間隔をさらに約2倍に拡張 (以前の約300～400から大幅UP)
+  spawnAt = 120;
+  coinSpawnAt = 150;
+  boostSpawnAt = 800;
+  groundOffset = 0; bgOffset = 0;
+}
+
+function initClouds(){
+  clouds = [];
+  for(let i=0;i<6;i++){
+    clouds.push({x:Math.random()*1200, y:30+Math.random()*120, s:0.6+Math.random()*0.9, sp:8+Math.random()*10});
+  }
+}
+
+/* =========================================================
+   4. DRAWING HELPERS
+========================================================= */
+function drawBackground(dt, idle){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, '#bfe8ff');
+  g.addColorStop(1, '#ffe3f1');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  const rg = ctx.createRadialGradient(W*0.82,H*0.18,10,W*0.82,H*0.18,140);
+  rg.addColorStop(0,'#fff7d6'); rg.addColorStop(1,'rgba(255,247,214,0)');
+  ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(W*0.82,H*0.18,140,0,7); ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  clouds.forEach(c=>{
+    if(!idle) c.x -= c.sp*dt;
+    if(c.x < -120) c.x = W+120;
+    drawCloud(c.x, c.y, c.s);
+  });
+
+  ctx.fillStyle = '#a8e6b8';
+  ctx.beginPath();
+  ctx.moveTo(0,groundY);
+  for(let x=0;x<=W;x+=60){
+    const yy = groundY-30 - Math.sin((x+bgOffset*0.3)*0.01)*18;
+    ctx.lineTo(x,yy);
+  }
+  ctx.lineTo(W,groundY); ctx.closePath(); ctx.fill();
+}
+function drawCloud(x,y,s){
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  ctx.beginPath();
+  ctx.arc(0,0,20,0,7); ctx.arc(22,-8,16,0,7); ctx.arc(-20,-4,15,0,7); ctx.arc(10,6,18,0,7);
+  ctx.fill(); ctx.restore();
+}
+
+function drawGround(dt, idle){
+  ctx.fillStyle = '#e8c27e';
+  ctx.fillRect(0, groundY, W, groundH);
+  const grassH = Math.max(14, groundH*0.22);
+  ctx.fillStyle = '#7fd99a';
+  ctx.fillRect(0, groundY, W, grassH);
+  ctx.strokeStyle = '#5cbf7c'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0,groundY+grassH); ctx.lineTo(W,groundY+grassH); ctx.stroke();
+
+  if(!idle) groundOffset -= speed*dt;
+  const tuft = 46;
+  ctx.fillStyle = '#5cbf7c';
+  let start = (groundOffset % tuft);
+  for(let x=start; x<W+tuft; x+=tuft){
+    ctx.beginPath();
+    ctx.moveTo(x, groundY+grassH);
+    ctx.lineTo(x+7, groundY+grassH-9);
+    ctx.lineTo(x+14, groundY+grassH);
+    ctx.fill();
+  }
+}
+
+// ---- rabbit ----
+function drawRabbit(cx, cy, size, skin, t, jumping, grounded){
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const rainbow = skin.color === 'rainbow';
+  const hue = (t*70) % 360;
+  const bodyColor = rainbow ? `hsl(${hue},80%,72%)` : skin.color;
+  const earColor  = rainbow ? `hsl(${(hue+40)%360},80%,85%)` : skin.ear;
+
+  if(skin.glow || boostTimer>0){
+    ctx.shadowColor = boostTimer>0 ? '#ff4757' : (rainbow ? `hsl(${hue},90%,70%)` : (RARITY_COLOR[skin.rarity]||'#fff'));
+    ctx.shadowBlur = size*0.45;
+  }
+
+  const bob = grounded && !jumping ? Math.sin(t*16)*size*0.03 : 0;
+  const earFlop = jumping ? -0.35 : Math.sin(t*16)*0.12;
+
+  // tail
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.ellipse(-size*0.32, size*0.05+bob, size*0.11, size*0.1, 0,0,7); ctx.fill();
+
+  // legs
+  ctx.fillStyle = shade(bodyColor,-12);
+  const legOff = grounded && !jumping ? Math.sin(t*16)*size*0.09 : size*0.05;
+  ctx.beginPath(); ctx.ellipse(-size*0.12, size*0.42+bob-legOff*0.2, size*0.1, size*0.14, 0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(size*0.18, size*0.42+bob+legOff*0.2, size*0.1, size*0.14, 0,0,7); ctx.fill();
+
+  // body
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(0, size*0.08+bob, size*0.34, size*0.4, 0,0,7); ctx.fill();
+
+  // ears
+  ctx.save();
+  ctx.translate(-size*0.1, -size*0.28+bob);
+  ctx.rotate(-0.15+earFlop);
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(0,-size*0.34,size*0.11,size*0.34,0,0,7); ctx.fill();
+  ctx.fillStyle = earColor;
+  ctx.beginPath(); ctx.ellipse(0,-size*0.34,size*0.06,size*0.24,0,0,7); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(size*0.13, -size*0.3+bob);
+  ctx.rotate(0.15-earFlop);
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(0,-size*0.34,size*0.11,size*0.34,0,0,7); ctx.fill();
+  ctx.fillStyle = earColor;
+  ctx.beginPath(); ctx.ellipse(0,-size*0.34,size*0.06,size*0.24,0,0,7); ctx.fill();
+  ctx.restore();
+
+  // head
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.arc(size*0.06, -size*0.18+bob, size*0.27, 0, 7); ctx.fill();
+
+  // cheeks
+  ctx.fillStyle = 'rgba(255,150,180,0.55)';
+  ctx.beginPath(); ctx.arc(size*0.18,-size*0.11+bob,size*0.06,0,7); ctx.fill();
+
+  // eye
+  if(skin.accessory === 'goldeye'){
+    ctx.fillStyle = '#ffd54f';
+    ctx.beginPath(); ctx.arc(size*0.18,-size*0.2+bob,size*0.055,0,7); ctx.fill();
+    ctx.fillStyle = '#fff8d0';
+    ctx.beginPath(); ctx.arc(size*0.2,-size*0.22+bob,size*0.018,0,7); ctx.fill();
+  } else {
+    ctx.fillStyle = '#3a2e39';
+    ctx.beginPath(); ctx.arc(size*0.18,-size*0.2+bob,size*0.04,0,7); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(size*0.195,-size*0.215+bob,size*0.014,0,7); ctx.fill();
+  }
+  // nose
+  ctx.fillStyle = '#ff8fa8';
+  ctx.beginPath(); ctx.arc(size*0.3,-size*0.15+bob,size*0.03,0,7); ctx.fill();
+
+  // accessories
+  if(skin.accessory === 'ribbon'){
+    ctx.fillStyle = '#ff6fa5';
+    ctx.beginPath();
+    ctx.moveTo(-size*0.02,-size*0.42+bob); ctx.lineTo(-size*0.16,-size*0.5+bob); ctx.lineTo(-size*0.16,-size*0.34+bob); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-size*0.02,-size*0.42+bob); ctx.lineTo(size*0.12,-size*0.5+bob); ctx.lineTo(size*0.12,-size*0.34+bob); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(-size*0.02,-size*0.42+bob,size*0.04,0,7); ctx.fill();
+  }
+  if(skin.accessory === 'crown'){
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    ctx.moveTo(-size*0.14,-size*0.44+bob);
+    ctx.lineTo(-size*0.14,-size*0.58+bob);
+    ctx.lineTo(-size*0.06,-size*0.46+bob);
+    ctx.lineTo(size*0.02,-size*0.6+bob);
+    ctx.lineTo(size*0.1,-size*0.46+bob);
+    ctx.lineTo(size*0.18,-size*0.58+bob);
+    ctx.lineTo(size*0.18,-size*0.44+bob);
+    ctx.closePath(); ctx.fill();
+  }
+  if(skin.accessory === 'star'){
+    for(let i=0;i<3;i++){
+      const ang = t*3 + i*2.1;
+      const rx = size*0.55, ry = size*0.4;
+      const sx = Math.cos(ang)*rx, sy = -size*0.15+Math.sin(ang)*ry*0.6+bob;
+      drawStar(sx,sy,size*0.06,'#ffe27a');
+    }
+  }
+
+  ctx.restore();
+}
+
+function shade(color, amt){
+  if(color.startsWith('hsl') || color==='rainbow') return '#999999';
+  const c = color.replace('#','');
+  if(c.length!==6) return color;
+  let r = parseInt(c.substr(0,2),16), g=parseInt(c.substr(2,2),16), b=parseInt(c.substr(4,2),16);
+  r=Math.max(0,Math.min(255,r+amt)); g=Math.max(0,Math.min(255,g+amt)); b=Math.max(0,Math.min(255,b+amt));
+  return `rgb(${r},${g},${b})`;
+}
+function drawStar(x,y,r,color){
+  ctx.save(); ctx.translate(x,y); ctx.fillStyle=color;
+  ctx.beginPath();
+  for(let i=0;i<5;i++){
+    ctx.lineTo(Math.cos((18+i*72)*Math.PI/180)*r, -Math.sin((18+i*72)*Math.PI/180)*r);
+    ctx.lineTo(Math.cos((54+i*72)*Math.PI/180)*r*0.4, -Math.sin((54+i*72)*Math.PI/180)*r*0.4);
+  }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ---- poop obstacle ----
+function drawPoop(x,y,w,h){
+  ctx.save();
+  ctx.translate(x+w/2, y+h);
+  const grad = ctx.createLinearGradient(0,-h,0,0);
+  grad.addColorStop(0,'#a9744a'); grad.addColorStop(1,'#6b4423');
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = '#4a2d15'; ctx.lineWidth = Math.max(1.5,w*0.03);
+  const lumps = [
+    {ry:0, rx:w*0.5, ryh:h*0.32},
+    {ry:-h*0.32, rx:w*0.4, ryh:h*0.28},
+    {ry:-h*0.58, rx:w*0.28, ryh:h*0.22},
+  ];
+  lumps.forEach(l=>{
+    ctx.beginPath(); ctx.ellipse(0,l.ry,l.rx,l.ryh,0,0,7); ctx.fill(); ctx.stroke();
+  });
+  ctx.fillStyle = '#2a1a0d';
+  ctx.beginPath(); ctx.arc(-w*0.1,-h*0.62,w*0.045,0,7); ctx.arc(w*0.1,-h*0.62,w*0.045,0,7); ctx.fill();
+  ctx.restore();
+}
+
+// ---- coin ----
+function drawCoin(x,y,r,t){
+  const sq = Math.abs(Math.sin(t*4+x*0.05));
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(0.35+sq*0.65,1);
+  const g = ctx.createRadialGradient(0,0,1,0,0,r);
+  g.addColorStop(0,'#fff3b0'); g.addColorStop(1,'#ffb703');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill();
+  ctx.strokeStyle = '#e08e00'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+}
+
+// ---- 2x Boost item ----
+function drawBoostItem(x,y,r,t){
+  ctx.save();
+  ctx.translate(x, y + Math.sin(t*5)*4);
+  ctx.shadowColor = '#ff4757'; ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ff4757';
+  ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px "Baloo 2", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('2X', 0, 1);
+  ctx.restore();
+}
+
+/* =========================================================
+   5. PARTICLES
+========================================================= */
+function spawnParticles(x,y,color,count,spread){
+  for(let i=0;i<count;i++){
+    particles.push({
+      x, y, vx:(Math.random()-0.5)*spread, vy:-Math.random()*spread*0.8,
+      life:0.4+Math.random()*0.3, age:0, color, r:2+Math.random()*3
+    });
+  }
+}
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.age += dt;
+    if(p.age>p.life){ particles.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 500*dt;
+  }
+}
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.globalAlpha = Math.max(0,1-p.age/p.life);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+/* =========================================================
+   6. GAME LOGIC & OVERLAP CHECKING
+========================================================= */
+function rabbitSize(){ return Math.max(46, H*0.11); }
+
+function startRun(){
+  resetGameVars();
+  const size = rabbitSize();
+  rabbit.w = size*0.68; rabbit.h = size*0.82;
+  rabbit.x = W*0.18;
+  rabbit.y = groundY - rabbit.h;
+  rabbit.grounded = true; rabbit.vy = 0; rabbit.jumping=false;
+  state = STATE.PLAYING;
+  document.getElementById('hud').classList.remove('hidden');
+  showScreen(null);
+}
+
+function doJump(){
+  if(state !== STATE.PLAYING) return;
+  if(rabbit.grounded){
+    const size = rabbitSize();
+    // ★ウサギのジャンプスピード（速度）を向上 (13.2 -> 16.5)
+    rabbit.vy = -size*16.5;
+    rabbit.grounded = false;
+    rabbit.jumping = true;
+    spawnParticles(rabbit.x+rabbit.w/2, groundY, 'rgba(255,255,255,0.7)', 8, 140);
+    playSE('jump');
+  }
+}
+
+// ウンチと重ならないかをチェックするヘルパー
+function isNearObstacle(x, safeDistance){
+  return obstacles.some(o => Math.abs(o.x - x) < safeDistance);
+}
+
+function spawnObstacle(){
+  const size = rabbitSize();
+  const h = size*(0.55+Math.random()*0.32);
+  const w = h*0.9;
+  obstacles.push({x:W+50, y:groundY-h, w, h});
+}
+
+function spawnCoinGroup(){
+  const size = rabbitSize();
+  const coinR = size*0.16;
+  const startX = W + 50;
+
+  // ★ウンチとの距離を最低220px開けて被り・密着を防止！
+  if(isNearObstacle(startX, 220)) return;
+
+  const pattern = Math.floor(Math.random()*3);
+  if(pattern === 0){
+    // 走行中に無理なく拾える位置
+    const y = groundY - size*0.45;
+    for(let i=0; i<3; i++){
+      coinsOnField.push({x: startX + i*34, y, r: coinR});
+    }
+  } else if(pattern === 1){
+    // ジャンプの軌道に合わせて無理なく取れる弧状配置
+    for(let i=0; i<4; i++){
+      const arcY = groundY - size*0.45 - Math.sin((i/3)*Math.PI)*(size*1.4);
+      coinsOnField.push({x: startX + i*34, y: arcY, r: coinR});
+    }
+  } else {
+    // 高めジャンプで取れる位置
+    coinsOnField.push({x: startX, y: groundY - size*1.5, r: coinR});
+  }
+}
+
+function spawnBoostItem(){
+  const size = rabbitSize();
+  const startX = W + 50;
+
+  // ★ウンチとの被りを防止
+  if(isNearObstacle(startX, 250)) return;
+
+  const y = groundY - size*0.55;
+  boostItems.push({x: startX, y, r: size*0.22});
+}
+
+function updateGame(dt){
+  elapsed += dt;
+
+  if(boostTimer > 0){
+    boostTimer -= dt;
+    document.getElementById('boostBanner').style.display = 'block';
+  } else {
+    document.getElementById('boostBanner').style.display = 'none';
+  }
+
+  const currentMeters = Math.floor(distance / PPM);
+  const speedLevel = Math.floor(currentMeters / 200);
+  speed = 380 + speedLevel * 45;
+
+  distance += speed * dt;
+  bgOffset -= speed * dt * 0.2;
+
+  // Physics (重力をジャンプ速に合わせて最適調整)
+  const size = rabbitSize();
+  const gravity = size * 42;
+  rabbit.vy += gravity * dt;
+  rabbit.y += rabbit.vy * dt;
+  const floorY = groundY - rabbit.h;
+  if(rabbit.y >= floorY){
+    rabbit.y = floorY; rabbit.vy = 0;
+    if(!rabbit.grounded){ spawnParticles(rabbit.x+rabbit.w/2, groundY, 'rgba(200,180,150,0.6)', 6, 100); }
+    rabbit.grounded = true; rabbit.jumping = false;
+  }
+
+  // ★ウンチの出現間隔を約2倍に調整 (十分なスペースを確保)
+  spawnAt -= speed * dt;
+  if(spawnAt <= 0){
+    spawnObstacle();
+    const gap = Math.max(450, 650 - speedLevel*20); // 以前の約2倍の間隔
+    spawnAt = gap + Math.random()*250;
+  }
+
+  // Spawn coins
+  coinSpawnAt -= speed * dt;
+  if(coinSpawnAt <= 0){
+    spawnCoinGroup();
+    coinSpawnAt = 280 + Math.random()*200;
+  }
+
+  // Spawn 2x boost items
+  boostSpawnAt -= speed * dt;
+  if(boostSpawnAt <= 0){
+    spawnBoostItem();
+    boostSpawnAt = 1000 + Math.random()*700;
+  }
+
+  // Move & collide obstacles
+  const rb = {x:rabbit.x+rabbit.w*0.18, y:rabbit.y+rabbit.h*0.12, w:rabbit.w*0.64, h:rabbit.h*0.82};
+  for(let i=obstacles.length-1;i>=0;i--){
+    const o = obstacles[i];
+    o.x -= speed*dt;
+    if(o.x+o.w < -20){ obstacles.splice(i,1); continue; }
+    const ob = {x:o.x+o.w*0.15, y:o.y+o.h*0.1, w:o.w*0.7, h:o.h*0.9};
+    if(rb.x<ob.x+ob.w && rb.x+rb.w>ob.x && rb.y<ob.y+ob.h && rb.y+rb.h>ob.y){
+      triggerGameOver();
+      return;
+    }
+  }
+
+  // Coins collision
+  for(let i=coinsOnField.length-1;i>=0;i--){
+    const c = coinsOnField[i];
+    c.x -= speed*dt;
+    if(c.x < -30){ coinsOnField.splice(i,1); continue; }
+    const dx = (rabbit.x+rabbit.w/2)-c.x, dy=(rabbit.y+rabbit.h/2)-c.y;
+    if(Math.sqrt(dx*dx+dy*dy) < c.r+rabbit.w*0.35){
+      coinsOnField.splice(i,1);
+      const coinAdd = boostTimer > 0 ? 2 : 1;
+      runCoins += coinAdd;
+      spawnParticles(c.x,c.y,'#ffd166',10,160);
+      playSE('coin');
+    }
+  }
+
+  // Boost Items collision
+  for(let i=boostItems.length-1;i>=0;i--){
+    const b = boostItems[i];
+    b.x -= speed*dt;
+    if(b.x < -30){ boostItems.splice(i,1); continue; }
+    const dx = (rabbit.x+rabbit.w/2)-b.x, dy=(rabbit.y+rabbit.h/2)-b.y;
+    if(Math.sqrt(dx*dx+dy*dy) < b.r+rabbit.w*0.35){
+      boostItems.splice(i,1);
+      boostTimer = 5.0;
+      spawnParticles(b.x,b.y,'#ff4757',16,220);
+      playSE('boost');
+    }
+  }
+
+  updateParticles(dt);
+
+  document.getElementById('distValue').textContent = currentMeters;
+  document.getElementById('runCoinValue').textContent = runCoins;
+}
+
+function triggerGameOver(){
+  playSE('hit');
+  spawnParticles(rabbit.x+rabbit.w/2, rabbit.y+rabbit.h/2, '#6b4423', 16, 260);
+  const meters = Math.floor(distance/PPM);
+  save.coins += runCoins;
+  if(meters > save.best) save.best = meters;
+  persistSave();
+
+  document.getElementById('goDist').textContent = meters + ' m';
+  document.getElementById('goBest').textContent = save.best + ' m';
+  document.getElementById('goCoin').textContent = '+' + runCoins + ' 🪙';
+
+  state = STATE.GAMEOVER;
+  document.getElementById('hud').classList.add('hidden');
+  showScreen('gameoverScreen');
+}
+
+/* =========================================================
+   7. RENDER LOOP
+========================================================= */
+let lastT = performance.now();
+let idleT = 0;
+function frame(now){
+  const dt = Math.min(0.033, (now-lastT)/1000);
+  lastT = now;
+  requestAnimationFrame(frame);
+
+  if(state === STATE.PLAYING){
+    updateGame(dt);
+    render(dt,false);
+  } else if(state === STATE.PAUSED || state === STATE.GAMEOVER){
+    render(0,false);
+  } else {
+    idleT += dt;
+    render(dt, true);
+  }
+}
+
+function render(dt, idle){
+  ctx.clearRect(0,0,W,H);
+  drawBackground(dt, idle && state!==STATE.PAUSED && state!==STATE.GAMEOVER);
+  drawGround(dt, idle && state!==STATE.PAUSED && state!==STATE.GAMEOVER);
+
+  if(idle){
+    const size = rabbitSize();
+    const t = idleT;
+    const hop = Math.abs(Math.sin(t*2.4))*size*0.5;
+    drawRabbit(W*0.5, groundY-hop-size*0.4, size, getSkin(save.equipped), t, hop>size*0.05, hop<=size*0.05);
+  } else {
+    obstacles.forEach(o=>drawPoop(o.x,o.y,o.w,o.h));
+    coinsOnField.forEach(c=>drawCoin(c.x,c.y,c.r, elapsed));
+    boostItems.forEach(b=>drawBoostItem(b.x,b.y,b.r, elapsed));
+    drawParticles();
+    if(rabbit && (state===STATE.PLAYING||state===STATE.PAUSED||state===STATE.GAMEOVER)){
+      drawRabbit(rabbit.x+rabbit.w/2, rabbit.y+rabbit.h*0.55, rabbitSize(), getSkin(save.equipped), elapsed, rabbit.jumping, rabbit.grounded);
+    }
+  }
+}
+
+/* =========================================================
+   8. UI & SHOP / GACHA WIRING
+========================================================= */
+function showScreen(id){
+  ['menuScreen','shopScreen','settingsScreen','pauseScreen','gameoverScreen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+
+function refreshCoinLabels(){
+  document.getElementById('menuCoinValue').textContent = save.coins;
+  document.getElementById('shopCoinValue').textContent = save.coins;
+}
+
+function drawMiniSkin(canvasEl, skin){
+  const c = canvasEl.getContext('2d');
+  const w = canvasEl.width, h = canvasEl.height;
+  c.clearRect(0,0,w,h);
+  ctxSwap(c, ()=> drawRabbit(w/2, h*0.66, w*0.6, skin, performance.now()/1000, false, true));
+}
+
+function ctxSwap(newCtx, fn){
+  const old = ctx;
+  ctx = newCtx;
+  fn();
+  ctx = old;
+}
+
+function renderMenuSkinPreview(){
+  const canvasEl = document.getElementById('menuSkinCanvas');
+  drawMiniSkin(canvasEl, getSkin(save.equipped));
+  document.getElementById('equippedNameTag').textContent = getSkin(save.equipped).name;
+}
+
+function renderShop(){
+  refreshCoinLabels();
+  document.getElementById('ownedCount').textContent = save.owned.length;
+  const grid = document.getElementById('skinGrid');
+  grid.innerHTML = '';
+
+  SKINS.forEach(skin=>{
+    const owned = save.owned.includes(skin.id);
+    const equipped = save.equipped === skin.id;
+
+    const card = document.createElement('div');
+    card.className = 'skin-card' + (equipped?' equipped':'') + (!owned?' locked':'');
+
+    const badge = document.createElement('div');
+    badge.className = 'rarity-badge';
+    badge.style.background = RARITY_COLOR[skin.rarity];
+    badge.textContent = RARITY_LABEL[skin.rarity];
+
+    const cvs = document.createElement('canvas');
+    cvs.width = 80; cvs.height = 80;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'skin-name'; nameEl.textContent = skin.name;
+
+    const statusEl = document.createElement('div');
+    if(equipped){
+      statusEl.className='skin-status'; statusEl.textContent='使用中';
+    } else if(owned){
+      statusEl.className='skin-status'; statusEl.textContent='所持';
+    } else if(skin.price > 0){
+      statusEl.className='skin-price'; statusEl.innerHTML = '🪙 '+skin.price;
+    } else {
+      statusEl.className='skin-status'; statusEl.style.color='#999'; statusEl.textContent='ガチャ限定';
     }
 
-    function stopBGM() {
-        if (bgmNode) {
-            bgmNode.stop();
-            bgmNode = null;
-        }
+    card.appendChild(badge); card.appendChild(cvs); card.appendChild(nameEl); card.appendChild(statusEl);
+    grid.appendChild(card);
+
+    card.addEventListener('click', ()=>{
+      ensureAudio();
+      if(equipped) return;
+      if(owned){
+        save.equipped = skin.id; persistSave(); playSE('select');
+        renderShop(); renderMenuSkinPreview();
+      } else if(skin.price > 0 && save.coins >= skin.price){
+        save.coins -= skin.price;
+        save.owned.push(skin.id);
+        save.equipped = skin.id;
+        persistSave(); playSE('buy');
+        renderShop(); renderMenuSkinPreview();
+      } else {
+        playSE('hit');
+        card.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}], {duration:250});
+      }
+    });
+
+    requestAnimationFrame(()=>{
+      const c2 = cvs.getContext('2d');
+      ctxSwap(c2, ()=> drawRabbit(40,52,30,skin,performance.now()/1000,false,true));
+    });
+  });
+}
+
+let isGachaRolling = false;
+function rollGacha(){
+  if(isGachaRolling) return;
+  if(save.coins < 300){
+    playSE('hit');
+    alert('コインが足りません！ (300🪙必要)');
+    return;
+  }
+
+  save.coins -= 300;
+  persistSave();
+  refreshCoinLabels();
+  playSE('button');
+
+  isGachaRolling = true;
+  const resName = document.getElementById('gachaResultName');
+  resName.textContent = 'ガチャ回転中...';
+
+  const gachaPool = SKINS.filter(s => s.price === 0);
+
+  let ticks = 0;
+  const timer = setInterval(()=>{
+    ticks++;
+    const randomSkin = gachaPool[Math.floor(Math.random()*gachaPool.length)];
+    drawMiniSkin(document.getElementById('gachaSkinCanvas'), randomSkin);
+    playSE('select');
+
+    if(ticks > 15){
+      clearInterval(timer);
+      isGachaRolling = false;
+      const wonSkin = gachaPool[Math.floor(Math.random()*gachaPool.length)];
+      drawMiniSkin(document.getElementById('gachaSkinCanvas'), wonSkin);
+
+      if(!save.owned.includes(wonSkin.id)){
+        save.owned.push(wonSkin.id);
+        resName.textContent = '🎉 NEW! ' + wonSkin.name + ' をゲット！';
+      } else {
+        resName.textContent = '✨ ' + wonSkin.name + ' (所持済み)';
+      }
+      save.equipped = wonSkin.id;
+      persistSave();
+      playSE('buy');
+      refreshCoinLabels();
+      renderMenuSkinPreview();
     }
+  }, 100);
+}
 
-    function playSynth(freq, type, duration, vol=0.1, slide=0) {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        if (slide !== 0) osc.frequency.exponentialRampToValueAtTime(freq + slide, audioCtx.currentTime + duration);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + duration);
+/* ---- Button Event Listeners ---- */
+document.getElementById('tapToStart').addEventListener('click', ()=>{
+  ensureAudio(); playSE('button'); startRun();
+});
+document.getElementById('openShopBtn').addEventListener('click', ()=>{
+  ensureAudio(); playSE('button'); renderShop(); showScreen('shopScreen');
+});
+document.getElementById('closeShopBtn').addEventListener('click', ()=>{
+  playSE('button'); showScreen('menuScreen'); refreshCoinLabels();
+});
+document.getElementById('openGachaBtn').addEventListener('click', ()=>{
+  ensureAudio(); playSE('button');
+  document.getElementById('gachaModal').classList.remove('hidden');
+  drawMiniSkin(document.getElementById('gachaSkinCanvas'), getSkin(save.equipped));
+  document.getElementById('gachaResultName').textContent = '300コインでガチャを回す！';
+});
+document.getElementById('gachaRollBtn').addEventListener('click', rollGacha);
+document.getElementById('gachaCloseBtn').addEventListener('click', ()=>{
+  if(isGachaRolling) return;
+  playSE('button');
+  document.getElementById('gachaModal').classList.hidden = true;
+  document.getElementById('gachaModal').classList.add('hidden');
+  refreshCoinLabels();
+});
+document.getElementById('settingsBtn').addEventListener('click', ()=>{
+  ensureAudio(); playSE('button'); showScreen('settingsScreen');
+});
+document.getElementById('closeSettingsBtn').addEventListener('click', ()=>{
+  playSE('button'); showScreen('menuScreen');
+});
+document.getElementById('bgmVolSlider').addEventListener('input', (e)=>{
+  save.bgmVol = parseInt(e.target.value); applyVolumes(); persistSave();
+  document.getElementById('bgmVolLabel').textContent = save.bgmVol;
+});
+document.getElementById('seVolSlider').addEventListener('input', (e)=>{
+  save.seVol = parseInt(e.target.value); applyVolumes(); persistSave();
+  document.getElementById('seVolLabel').textContent = save.seVol;
+});
+
+document.getElementById('pauseBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  if(state!==STATE.PLAYING) return;
+  state = STATE.PAUSED; playSE('button'); showScreen('pauseScreen');
+});
+document.getElementById('resumeBtn').addEventListener('click', ()=>{
+  playSE('button'); state = STATE.PLAYING; showScreen(null);
+});
+document.getElementById('pauseRetryBtn').addEventListener('click', ()=>{
+  playSE('button'); startRun();
+});
+document.getElementById('pauseMenuBtn').addEventListener('click', ()=>{
+  playSE('button'); backToMenu();
+});
+document.getElementById('retryBtn').addEventListener('click', ()=>{
+  playSE('button'); startRun();
+});
+document.getElementById('goMenuBtn').addEventListener('click', ()=>{
+  playSE('button'); backToMenu();
+});
+
+function backToMenu(){
+  state = STATE.MENU;
+  document.getElementById('hud').classList.add('hidden');
+  showScreen('menuScreen');
+  refreshCoinLabels();
+  renderMenuSkinPreview();
+}
+
+/* Controls */
+canvas.addEventListener('pointerdown', ()=>{
+  ensureAudio();
+  if(state===STATE.PLAYING){ doJump(); }
+});
+window.addEventListener('keydown', (e)=>{
+  if(e.code==='Space' || e.code==='ArrowUp'){
+    e.preventDefault();
+    ensureAudio();
+    if(state===STATE.MENU){ startRun(); }
+    else if(state===STATE.PLAYING){ doJump(); }
+  }
+  if(e.code==='KeyP'){
+    if(state===STATE.PLAYING){ state=STATE.PAUSED; showScreen('pauseScreen'); }
+    else if(state===STATE.PAUSED){ state=STATE.PLAYING; showScreen(null); }
+  }
+});
+document.addEventListener('touchmove', (e)=>{ e.preventDefault(); }, {passive:false});
+
+/* =========================================================
+   9. INITIALIZATION
+========================================================= */
+function init(){
+  resize();
+  initClouds();
+  document.getElementById('bgmVolSlider').value = save.bgmVol;
+  document.getElementById('seVolSlider').value = save.seVol;
+  document.getElementById('bgmVolLabel').textContent = save.bgmVol;
+  document.getElementById('seVolLabel').textContent = save.seVol;
+  refreshCoinLabels();
+  renderMenuSkinPreview();
+  showScreen('menuScreen');
+  requestAnimationFrame(frame);
+
+  setTimeout(()=>{
+    const splash = document.getElementById('splashScreen');
+    if(splash){
+      splash.classList.add('fade-out');
+      setTimeout(()=> splash.style.display = 'none', 800);
     }
+  }, 1200);
+}
+init();
 
-    const se = {
-        jump: () => playSynth(600, 'square', 0.1, 0.05, -300),
-        getBarrier: () => playSynth(800, 'sine', 0.2, 0.1, 400),
-        useBarrier: () => playSynth(400, 'sawtooth', 0.5, 0.03, 100),
-        getDouble: () => {
-            playSynth(1800, 'sine', 0.15, 0.1, 600);
-            setTimeout(() => playSynth(2400, 'sine', 0.15, 0.1, 700), 50);
-            setTimeout(() => playSynth(3200, 'sine', 0.25, 0.1, 900), 100);
-        },
-        crash: () => playSynth(100, 'sawtooth', 0.6, 0.2, -50)
-    };
-
-    const V_WIDTH = 1000; const V_HEIGHT = 1600; 
-    function resize() { canvas.width = V_WIDTH; canvas.height = V_HEIGHT; }
-    window.addEventListener('resize', resize); resize();
-
-    let score = 0, gameActive = false, lastTime = performance.now();
-    let spawnTimer = 0, barrierSpawnTimer = 0, doubleSpawnTimer = 0, nextSpawnTime = 500;
-    const groundY = V_HEIGHT * 0.88;
-    let barrierActive = false, barrierTimeLeft = 0;
-    let doubleActive = false, doubleTimeLeft = 0;
-    const rabbit = { x: V_WIDTH * 0.25, y: groundY - 100, dy: 0, jump: -2450, grav: 11000, grounded: false };
-    const obstacles = [], items = [];
-
-    function handleStart(e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        initAudio();
-        if (!gameActive) { 
-            reset(); 
-            overlay.style.display = "none"; 
-            gameActive = true; 
-            startBGM(); // BGM開始
-            lastTime = performance.now();
-            requestAnimationFrame(loop);
-        }
-    }
-    overlay.addEventListener("touchstart", handleStart);
-    overlay.addEventListener("mousedown", handleStart);
-
-    function reset() {
-        score = 0; scoreEl.innerText = 0; obstacles.length = 0; items.length = 0;
-        barrierActive = false; doubleActive = false;
-        doubleInd.style.display = "none"; barrierIcon.style.display="none";
-        deathText.style.display = "none";
-        rabbit.dy = 0; rabbit.y = groundY - 65; spawnTimer = 0; 
-        barrierSpawnTimer = 0; doubleSpawnTimer = 0;
-    }
-
-    const doJump = (e) => {
-        if (!gameActive) return;
-        if (rabbit.grounded) { rabbit.dy = rabbit.jump; rabbit.grounded = false; se.jump(); }
-    };
-    window.addEventListener("touchstart", (e) => { if(gameActive) { doJump(e); e.preventDefault(); } }, { passive: false });
-    window.addEventListener("mousedown", (e) => { if(gameActive) doJump(e); });
-
-    function update(dt) {
-        if (!gameActive) return;
-        let scoreGain = dt * 50;
-        if (doubleActive) {
-            scoreGain *= 2; doubleTimeLeft -= dt;
-            if (doubleTimeLeft <= 0) { doubleActive = false; doubleInd.style.display = "none"; }
-        }
-        score += scoreGain; scoreEl.innerText = Math.floor(score);
-        
-        if (barrierActive) {
-            barrierTimeLeft -= dt;
-            barrierTimerEl.innerText = Math.ceil(barrierTimeLeft) + "s";
-            if (barrierTimeLeft <= 0) { 
-                barrierActive = false; 
-                barrierIcon.style.display="none"; 
-                barrierIcon.classList.remove("active");
-            }
-        }
-
-        rabbit.dy += rabbit.grav * dt; rabbit.y += rabbit.dy * dt;
-        if (rabbit.y > groundY - 65) { rabbit.y = groundY - 65; rabbit.dy = 0; rabbit.grounded = true; }
-        
-        spawnTimer += dt * 1000;
-        if (spawnTimer > nextSpawnTime) {
-            obstacles.push({ x: V_WIDTH + 200, y: groundY, size: Math.random()*20+60 });
-            spawnTimer = 0; nextSpawnTime = Math.random()*500+450;
-        }
-        barrierSpawnTimer += dt * 1000;
-        if (barrierSpawnTimer > 7000) { items.push({ type: 'barrier', x: V_WIDTH + 200, y: groundY - 250 - Math.random()*150 }); barrierSpawnTimer = 0; }
-        doubleSpawnTimer += dt * 1000;
-        if (doubleSpawnTimer > 15000) { items.push({ type: 'double', x: V_WIDTH + 200, y: groundY - 250 - Math.random()*150 }); doubleSpawnTimer = 0; }
-
-        const moveSpeed = (1300 + score * 0.7) * dt;
-        items.forEach((it, i) => {
-            it.x -= moveSpeed;
-            if (Math.hypot(rabbit.x-it.x, rabbit.y-it.y) < 100) {
-                if (it.type === 'barrier') { 
-                    se.useBarrier();
-                    barrierActive = true; 
-                    barrierTimeLeft = 6; 
-                    barrierIcon.style.display="flex"; 
-                    barrierIcon.classList.add("active"); 
-                }
-                else { se.getDouble(); doubleActive = true; doubleTimeLeft = 3; doubleInd.style.display = "block"; }
-                items.splice(i, 1);
-            }
-        });
-        obstacles.forEach((o, i) => {
-            o.x -= moveSpeed;
-            if (Math.abs(rabbit.x-o.x) < o.size*0.7 && Math.abs((rabbit.y+40)-(o.y-o.size*0.5)) < o.size*0.8) {
-                if (barrierActive) { 
-                    barrierActive = false; 
-                    barrierIcon.style.display="none"; 
-                    obstacles.splice(i, 1); 
-                    se.getBarrier(); 
-                }
-                else { 
-                    se.crash(); 
-                    stopBGM(); // クラッシュ時にBGM停止
-                    gameActive = false; 
-                    statusMsg.innerText = "GAMEOVER"; 
-                    deathText.style.display = "block"; 
-                    overlay.style.display="flex"; 
-                }
-            }
-        });
-    }
-
-    function draw() {
-        ctx.clearRect(0,0,V_WIDTH,V_HEIGHT);
-        ctx.fillStyle = "#87CEEB"; ctx.fillRect(0,0,V_WIDTH,V_HEIGHT);
-        ctx.fillStyle = "#558B2F"; ctx.fillRect(0,groundY,V_WIDTH,V_HEIGHT-groundY);
-        items.forEach(it => {
-            ctx.save(); ctx.translate(it.x, it.y); ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2);
-            const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 45);
-            if (it.type === 'barrier') { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#00d2ff"); ctx.fillStyle = grad; }
-            else { grad.addColorStop(0, "#fff"); grad.addColorStop(1, "#ff9800"); ctx.fillStyle = grad; }
-            ctx.fill(); ctx.fillStyle = it.type==='barrier'?"white":"#000"; ctx.font = "bold 35px sans-serif"; ctx.textAlign = "center"; ctx.fillText(it.type==='barrier'?"🛡️":"×2", 0, 12);
-            ctx.stroke(); ctx.restore();
-        });
-        obstacles.forEach(o => {
-            ctx.save(); ctx.translate(o.x, o.y); ctx.fillStyle = "#795548"; ctx.strokeStyle = "#2D1B15"; ctx.lineWidth = 5;
-            [{oy:0,w:o.size,h:o.size*0.45},{oy:-o.size*0.45,w:o.size*0.75,h:o.size*0.35},{oy:-o.size*0.85,w:o.size*0.45,h:o.size*0.3}].forEach(l=>{ ctx.beginPath();ctx.ellipse(0,l.oy,l.w,l.h,0,0,Math.PI*2);ctx.fill();ctx.stroke(); });
-            ctx.restore();
-        });
-        ctx.save(); ctx.translate(rabbit.x, rabbit.y);
-        if (barrierActive) { ctx.shadowBlur = 40; ctx.shadowColor = "#00d2ff"; }
-        else if (doubleActive) { ctx.shadowBlur = 30; ctx.shadowColor = "#ffeb3b"; }
-        [[-0.5,-1.1,-0.1],[0.5,-1.1,0.1]].forEach(p=>{
-            ctx.fillStyle="white";ctx.beginPath();ctx.ellipse(p[0]*55,p[1]*55,16,55,p[2],0,Math.PI*2);ctx.fill();ctx.stroke();
-            ctx.fillStyle="#FFC0CB";ctx.beginPath();ctx.ellipse(p[0]*55,p[1]*55,8,38,p[2],0,Math.PI*2);ctx.fill();
-        });
-        ctx.fillStyle="white";ctx.beginPath();ctx.arc(0,0,55,0,Math.PI*2);ctx.fill();ctx.stroke();
-        ctx.fillStyle="#000";ctx.beginPath();ctx.ellipse(-19,-11,10,19,0,0,Math.PI*2);ctx.ellipse(19,-11,10,19,0,0,Math.PI*2);ctx.fill();
-        if (barrierActive) { ctx.beginPath(); ctx.strokeStyle = "#00d2ff"; ctx.lineWidth = 10; ctx.arc(0, 0, 80, 0, Math.PI*2); ctx.stroke(); }
-        ctx.restore();
-    }
-
-    function loop(t) { 
-        if (!gameActive) return;
-        let dt = (t - lastTime) / 1000; if (dt > 0.05) dt = 0.05; lastTime = t; 
-        update(dt); draw(); requestAnimationFrame(loop); 
-    }
+})();
 </script>
 </body>
 </html>
